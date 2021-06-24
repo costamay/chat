@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
 from django.db.models.signals import post_save
@@ -26,7 +27,7 @@ class CustomUserManager(BaseUserManager):
         if extra_fields.get("is_superuser") is not True:
             raise ValueError("Superuser must have is_superuser=True")
 
-        return self._create_user(username, password, **extra_fields)
+        return self.create_user(username, password, **extra_fields)
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -50,7 +51,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
 
 class Profile(models.Model):
-    user = models. OneToOneFiled(CustomUser, related_name="user_profile", on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name="profile", on_delete=models.CASCADE)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     bio = models.CharField(max_length=250)
@@ -62,20 +63,20 @@ class Profile(models.Model):
         return self.user.username
 
     class Meta:
-        odering = ("created_at",)
+        ordering = ("created_at",)
 
-@receiver(post_save, sender=CustomUser)
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.create(user=instance)
 
-@receiver(post_save, sender=CustomUser)
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def save_user_profile(sender, instance, **kwargs):
     instance.profile.save()
 
 class Message(models.Model):
-    sender = models.ForeignKey(CustomUser, related_name="message_sender", on_delete=models.CASCADE)
-    receiver = models.ForeignKey(CustomUser, related_name="message_receiver", on_delete=models.CASCADE)
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="message_sender", on_delete=models.CASCADE)
+    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="message_receiver", on_delete=models.CASCADE)
     message = models.TextField(blank=True, null=True)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
